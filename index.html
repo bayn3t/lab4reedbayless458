@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>GEOG 458 Lab 4 — Tile Map Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <style>
+    html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    #map { position: absolute; inset: 0; }
+
+    .panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 2;
+      width: 320px;
+      background: rgba(255,255,255,0.94);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+      padding: 12px 12px 10px 12px;
+    }
+    .panel h1 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .panel p {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #333;
+    }
+    .divider { height: 1px; background: rgba(0,0,0,0.08); margin: 10px 0; }
+
+    .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 7px 0;
+      font-size: 12px;
+      color: #222;
+    }
+    .layer-row input { transform: translateY(1px); }
+
+    .footer {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 2;
+      background: rgba(255,255,255,0.86);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 11px;
+      max-width: 420px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    }
+    .footer strong { font-weight: 650; }
+
+    @media (max-width: 520px) {
+      .panel { width: calc(100% - 24px); }
+      .footer { max-width: calc(100% - 24px); }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div class="panel">
+    <h1>Lab 4 — Tile Map Design & Viewer</h1>
+    <p>
+      Four raster tilesets exported from QGIS (EPSG:3857) and displayed in Mapbox GL JS using local
+      <code>{z}/{x}/{y}.png</code> tiles from the <code>assets/</code> folder.
+    </p>
+
+    <div class="divider"></div>
+
+    <div class="layer-row">
+      <input type="checkbox" id="basemapToggle" checked />
+      <label for="basemapToggle">Tileset 1 — Basemap</label>
+    </div>
+
+    <div class="layer-row">
+      <input type="checkbox" id="thematicToggle" checked />
+      <label for="thematicToggle">Tileset 2 — Thematic (My Data)</label>
+    </div>
+
+    <div class="layer-row">
+      <input type="checkbox" id="combinedToggle" />
+      <label for="combinedToggle">Tileset 3 — Combined</label>
+    </div>
+
+    <div class="layer-row">
+      <input type="checkbox" id="themeToggle" />
+      <label for="themeToggle">Tileset 4 — Theme Basemap</label>
+    </div>
+
+    <div class="divider"></div>
+
+    <p style="margin:0;">
+      Tip: You can turn layers on/off to compare designs. Combined and Theme start hidden.
+    </p>
+  </div>
+
+  <div class="footer">
+    <strong>GEOG 458 Lab 4</strong> — Tiles rendered in QGIS (QMetaTiles/QTiles). Basemap styles designed in Mapbox Studio.
+  </div>
+
+  <script>
+    mapboxgl.accessToken = "PASTE_YOUR_MAPBOX_TOKEN_HERE";
+
+    const START_CENTER = [10.0, 50.5];
+    const START_ZOOM = 4.6;
+
+    const blankStyle = { version: 8, sources: {}, layers: [] };
+
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: blankStyle,
+      center: START_CENTER,
+      zoom: START_ZOOM
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 140, unit: "metric" }), "bottom-right");
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-left");
+
+    function setVisibility(layerId, visible) {
+      if (!map.getLayer(layerId)) return;
+      map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+    }
+
+    map.on("load", () => {
+      map.addSource("basemap-src", {
+        type: "raster",
+        tiles: ["assets/basemap/{z}/{x}/{y}.png"],
+        tileSize: 256
+      });
+      map.addLayer({ id: "basemap-lyr", type: "raster", source: "basemap-src" });
+
+      map.addSource("thematic-src", {
+        type: "raster",
+        tiles: ["assets/thematic/{z}/{x}/{y}.png"],
+        tileSize: 256
+      });
+      map.addLayer({ id: "thematic-lyr", type: "raster", source: "thematic-src" });
+
+      map.addSource("combined-src", {
+        type: "raster",
+        tiles: ["assets/combined/{z}/{x}/{y}.png"],
+        tileSize: 256
+      });
+      map.addLayer({
+        id: "combined-lyr",
+        type: "raster",
+        source: "combined-src",
+        layout: { visibility: "none" }
+      });
+
+      map.addSource("theme-src", {
+        type: "raster",
+        tiles: ["assets/theme/{z}/{x}/{y}.png"],
+        tileSize: 256
+      });
+      map.addLayer({
+        id: "theme-lyr",
+        type: "raster",
+        source: "theme-src",
+        layout: { visibility: "none" }
+      });
+
+      document.getElementById("basemapToggle").addEventListener("change", e => {
+        setVisibility("basemap-lyr", e.target.checked);
+      });
+      document.getElementById("thematicToggle").addEventListener("change", e => {
+        setVisibility("thematic-lyr", e.target.checked);
+      });
+      document.getElementById("combinedToggle").addEventListener("change", e => {
+        setVisibility("combined-lyr", e.target.checked);
+      });
+      document.getElementById("themeToggle").addEventListener("change", e => {
+        setVisibility("theme-lyr", e.target.checked);
+      });
+    });
+  </script>
+</body>
+</html>
