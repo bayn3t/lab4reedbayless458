@@ -77,7 +77,3 @@ Screenshots were captured from the live web map with only one tileset visible at
 
 ### Tileset 4 — Theme Basemap
 ![Theme](assets/img/theme.png)
-
----
-
-## Repository Structure
